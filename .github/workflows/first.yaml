@@ -1,9 +1,32 @@
-name: Sohaib's CI Workflow
-on: [push]
+name: Deploy Nginx to EC2
+
+on:
+  push:
+    branches:
+      - main
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Run Script
-      run: echo "Hello GitHub Actions!"
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up SSH
+      run: |
+        echo "$ANSIBLE_PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        mkdir -p ~/.ssh
+        mv private_key.pem ~/.ssh/ansiblekey.pem
+      env:
+        ANSIBLE_PRIVATE_KEY: ${{ secrets.ansiblekey }}
+
+    - name: Install Nginx on EC2
+      run: |
+        ssh -i ~/.ssh/ansiblekey.pem -o StrictHostKeyChecking=no ubuntu@13.232.35.119 << 'EOF'
+          sudo apt update -y
+          sudo apt install -y nginx
+          sudo systemctl start nginx
+          sudo systemctl enable nginx
+        EOF
